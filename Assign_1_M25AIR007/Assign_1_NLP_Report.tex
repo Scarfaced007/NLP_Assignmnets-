@@ -1,0 +1,146 @@
+\documentclass[11pt]{article}
+\usepackage{geometry}
+\geometry{a4paper, margin=1in}
+\usepackage{graphicx}
+\usepackage{hyperref}
+\usepackage{enumitem}
+\usepackage{fontspec}
+\setmainfont{FreeSerif}
+
+% -------------------------------------------------------------------
+% TITLE BLOCK
+% -------------------------------------------------------------------
+\title{\textbf{Assignment 1: Sanskrit-English Sentence Embeddings}\\
+\large AIL7390: Deep Learning for NLP}
+\date{}
+
+\begin{document}
+
+\maketitle
+
+% -------------------------------------------------------------------
+% 1. INTRODUCTION
+% -------------------------------------------------------------------
+\section{Introduction}
+Generating high-quality sentence-level embeddings for parallel Sanskrit-English text requires balancing semantic richness with low dimensionality. Sanskrit is a low-resource, morphologically rich language, making standard representation learning challenging. This report details a comparative study between two architectural approaches, a Linear Knowledge Distillation model and a Non-Linear Neural Compression model, designed to aggressively reduce embedding dimensions while preserving cross-lingual semantic similarity.
+
+% -------------------------------------------------------------------
+% 2. METHODOLOGY
+% -------------------------------------------------------------------
+\section{Methodology}
+To find the optimal balance between achieving the lowest possible dimensionality and maintaining a high cosine similarity score, two distinct pipelines were developed and evaluated:
+
+\begin{itemize}[leftmargin=*]
+    \item \textbf{Model A (Linear Distillation):} The pre-trained sentence-transformers(LaBSE) model was utilized to extract initial 768-dimensional feature vectors. Principal Component Analysis (PCA) was then applied to the joint embedding space, compressing the representations to 128 dimensions.
+    \item \textbf{Model B (Neural Compression):} To push the dimensionality even lower, the paraphrase-multilingual-MiniLM-L12-v2 model was used as the base extractor (yielding 384 dimensions). A custom PyTorch Multi-Layer Perceptron (MLP) featuring GELU activations and LayerNorm was trained from scratch. Using negative sampling, the network learned to map the translations non-linearly down to an ultra-compact 64 dimensions.
+\end{itemize}
+
+
+% -------------------------------------------------------------------
+% 3. RESULTS
+% -------------------------------------------------------------------
+\section{Results}
+The embeddings were evaluated on the test set. Model B (Neural Compression) was selected as the final submission for its vast superiority in parameter efficiency.
+\begin{itemize}
+    \item \textbf{Final Embedding Dimension:} 64
+    \item \textbf{Average Cosine Similarity:} 0.7881
+\end{itemize}
+
+
+% -------------------------------------------------------------------
+% 4. EXPERIMENTS
+% -------------------------------------------------------------------
+\section{Experiments}
+The evaluation framework heavily rewarded dimensionality reduction while penalizing losses in cosine similarity. The experiments yielded the following comparative trade-offs:
+\begin{itemize}
+    \item \textbf{Baseline (Raw LaBSE):} Achieved the highest raw similarity but failed the dimensionality constraint completely at 768 dimensions.
+    \item \textbf{Model A (PCA at 128D):} Maintained a high cosine similarity around 0.84, serving as a highly balanced linear approach.
+    \item \textbf{Model B (MLP at 64D):} While the cosine similarity dropped to 0.78 due to the extreme information bottleneck, the aggressive reduction to 64 dimensions. This proved that non-linear networks can retain semantic mapping even when discarding over eighty percent of the base vector space.
+\end{itemize}
+
+% -------------------------------------------------------------------
+% 5. VISUALIZATION
+% -------------------------------------------------------------------
+\section{t-SNE Visualization}
+The following figure maps the compressed vectors of 100 sample pairs down to a 2D space.
+
+\begin{figure}[h]
+    \centering
+    % UNCOMMENT THE LINE BELOW ONCE YOU UPLOAD YOUR IMAGE TO OVERLEAF
+     \includegraphics[width=1.0\textwidth]{tsne_plot.png} 
+    \caption{A 2D t-SNE projection of 100 parallel Sanskrit-English sentence pairs using the 64-dimensional Neural Compression model.}
+    \label{fig:tsne}
+\end{figure}
+
+% -------------------------------------------------------------------
+% 6. ANALYSIS
+% -------------------------------------------------------------------
+\section{Analysis}
+The following five pairs from the test dataset demonstrate how the Neural Compression model (Model B) handles varying degrees of translation complexity at 64 dimensions:
+
+\begin{itemize}[leftmargin=*]
+    \item \textbf{Example 1: Literal Translation}
+    \begin{itemize}
+        \item \textit{Sanskrit:} वानरः फलं निक्षिपति ।
+        \item \textit{English:} Monkey throws down fruit.
+        \item \textit{Similarity:} 0.9536
+        \item \textit{Note:} An exceptionally high score. The neural network perfectly preserved the semantic alignment for direct, noun-verb-noun structured translations despite the extreme compression.
+    \end{itemize}
+
+    \item \textbf{Example 2: Code-Mixing (English Script)}
+    \begin{itemize}
+        \item \textit{Sanskrit:} Moodle 3.3 अपि च Firefox वेब्-ब्रौसर् इत्येतेषां विनियोगं कृतवान्स्मि । भवदभीष्टं यत्किमपि वेब्-ब्रौसर् उपयोक्तुमर्हन्ति भवन्तः ।
+        \item \textit{English:} Moodle 3.3 And Firefox web browser You may use any web browser of your choice.
+        \item \textit{Similarity:} 0.9386
+        \item \textit{Note:} The model performs brilliantly when English technical terms ("Moodle 3.3", "Firefox") are preserved in their native Latin script within the Sanskrit text, utilizing them as strong semantic anchors.
+    \end{itemize}
+
+    \item \textbf{Example 3: Code-Mixing (Devanagari Transliteration)}
+    \begin{itemize}
+        \item \textit{Sanskrit:} अधुना उदाहरणेन सह स्टेटिक् वेरियेबल्स् इत्येतेषां विनियोगं प्रदर्शयामः ।
+        \item \textit{English:} Let us illustrate the usage of static variables with an example.
+        \item \textit{Similarity:} 0.4483
+        \item \textit{Note:} A sharp drop in performance compared to Example 2. Here, the English words "static variables" are phonetically transliterated into Devanagari script. This creates out-of-vocabulary tokens that the base model struggles to map to the target English.
+    \end{itemize}
+    
+    \item \textbf{Example 4: Technical Instructions}
+    \begin{itemize}
+        \item \textit{Sanskrit:} अधः स्क्रोल् कृत्वा पृष्टस्याधः Save and display गण्डं नुदन्तु ।
+        \item \textit{English:} Scroll down and click on Save and display button at the bottom of the page.
+        \item \textit{Similarity:} 0.9265
+        \item \textit{Note:} The network successfully aligns imperative technical commands across the two languages, showing robustness in domain-specific instructional text.
+    \end{itemize}
+
+    \item \textbf{Example 5: Archaic \& Abstract Vocabulary}
+    \begin{itemize}
+        \item \textit{Sanskrit:} "अपरं तेषां को जनः श्रेष्ठत्वेन गणयिष्यते, अत्रार्थे तेषां विवादोभवत्।"
+        \item \textit{English:} "And there was also a strife among them, which of them should be accounted the greatest."
+        \item \textit{Similarity:} 0.4829
+        \item \textit{Note:} A low score. The use of archaic English phrasing like "strife" and "accounted the greatest" shifts the English target vector away from the modern semantic space, highlighting a limitation in mapping historical texts.
+    \end{itemize}
+\end{itemize}
+
+% -------------------------------------------------------------------
+% 7. DISCUSSION
+% -------------------------------------------------------------------
+\section{Discussion}
+\subsection{Design Choices}
+To overcome the linguistic barriers of Sanskrit and satisfy the extreme dimensionality constraints, two specific architectural decisions were made for the final model:
+\begin{itemize}[leftmargin=*]
+    \item \textbf{Pre-Trained Semantic Anchor:} Bypasses the need to train morphological mappings from scratch. Leveraging a multilingual base model ensures a strong initial vector alignment.
+    \item \textbf{Non-Linear Neural Compression:} Unlike PCA, which is strictly a linear transformation, implementing a PyTorch network with GELU activations allowed the model to fold and compress the semantic space non-linearly, aggressively minimizing the footprint to 64 dimensions.
+\end{itemize}
+
+\subsection{Limitations \& Future Work}
+While highly efficient, the 64-dimensional Neural Compressor encounters an absolute information bottleneck. Reducing the original 384-dimensional space by over eighty percent forces the network to discard subtle linguistic nuances, as evidenced by its struggles with archaic text and transliterated Out-Of-Vocabulary terms. Future work could explore incorporating a character-level Convolutional Neural Network (CNN) alongside the transformer to better handle phonetic Devanagari transliterations.
+
+% -------------------------------------------------------------------
+% 8. REFERENCES
+% -------------------------------------------------------------------
+\section{References}
+\begin{enumerate}
+    \item Reimers, N., \& Gurevych, I. (2020). Making Monolingual Sentence Embeddings Multilingual using Knowledge Distillation. \textit{EMNLP}.
+    \item Wang, L., et al. (2020). \textit{MiniLM: Deep Self-Attention Distillation for Task-Agnostic Compression of Pre-Trained Transformers}.
+\end{enumerate}
+
+\end{document}
